@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Ubuntu 22.04.4 LTS (Jammy Jellyfish)
+
+# Update hosts file
+echo "[TASK 1] Update /etc/hosts file"
+cat >>/etc/hosts<<EOF
+192.168.137.100 kmaster.example.com kmaster
+192.168.137.101 kworker1.example.com kworker1
+192.168.137.102 kworker2.example.com kworker2
+EOF
+
+# Disable swap
+echo "[TASK 2] Disable and turn off SWAP"
+sed -i '/swap/d' /etc/fstab
+swapoff -a
+
+# Forwarding IPv4 and letting iptables see bridged traffic
+echo "[TASK 3] Forwarding Configuration"
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+# Apply sysctl params without reboot
+sysctl --system
+
+
+echo "[TASK 4] Install containerd"
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg lsb-release
+rm -rf /usr/share/keyrings/docker-archive-keyring.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y containerd.io
+
+rm -rf /etc/containerd
+mkdir /etc/containerd
+containerd config default > /etc/containerd/config.toml
+sed -i 's/            SystemdCgroup = false/            SystemdCgroup = true/' /etc/containerd/config.toml
+sed -i 's/registry\.k8s\.io\/pause:3\.8/registry.k8s.io\/pause:3\.10/g' /etc/containerd/config.toml
+systemctl enable containerd >/dev/null 2>&1
+systemctl restart containerd >/dev/null 2>&1
+apt-mark hold containerd
+
+
+echo "[TASK 5] Install kubernetes"
+export DEBIAN_FRONTEND=noninteractive
+rm -rf /etc/apt/apt.conf.d/70debconf
+apt-get update -y
+apt-get install -y apt-transport-https ca-certificates curl
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+apt-get update -y
+apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
+
+
+# Start and Enable kubelet service
+echo "[TASK 6] Enable and start kubelet service"
+systemctl enable kubelet >/dev/null 2>&1
+systemctl restart kubelet >/dev/null 2>&1
+
+# Enable ssh password authentication
+echo "[TASK 7] Enable ssh password authentication"
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+systemctl restart sshd
+
+# Set Root password
+echo "[TASK 8] Set root password"
+echo -e "centos\ncentos" | passwd root
+
+# Update all users bashrc file
+echo "export TERM=xterm" >> /etc/bashrc
