@@ -33,4 +33,5 @@ source /usr/share/bash-completion/bash_completion
 source <(kubectl completion bash)
 source <(kubeadm completion bash)
 EOF
+sleep 10s
 source ~/.bashrc

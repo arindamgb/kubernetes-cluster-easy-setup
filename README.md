@@ -31,19 +31,19 @@ cd kubernetes-cluster-easy-setup
 ## All nodes
 * Run below command on each node
 ```
-sh common.sh
+bash common.sh
 ```
 
 ## Master node
 * Run below command only on Master node
 ```
-sh master.sh
+bash master.sh
 ```
 
 ## Worker nodes
 * Run below command on all Worker nodes
 ```
-sh worker.sh
+bash worker.sh
 ```
 
 ## For more references
