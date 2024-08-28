@@ -46,6 +46,14 @@ bash master.sh
 bash worker.sh
 ```
 
+## Check the cluster
+* Run below commands to start using the cluster
+```
+source ~/.bashrc
+kubectl cluster-info
+kubectl get nodes
+```
+
 ## For more references
 * Kubernetes Website: [kubernetes.io](https://kubernetes.io/).
 * My LinkedIn Profile: [Arindam Gustavo Biswas](https://www.linkedin.com/in/arindamgb/).
