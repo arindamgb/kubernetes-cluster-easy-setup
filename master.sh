@@ -31,7 +31,8 @@ cat <<EOF | sudo tee -a ~/.bashrc
 export KUBECONFIG=/etc/kubernetes/admin.conf
 source /usr/share/bash-completion/bash_completion
 source <(kubectl completion bash)
-source <(kubeadm completion bash)
+alias k=kubectl
+complete -F __start_kubectl k
 EOF
 sleep 10s
 source ~/.bashrc
